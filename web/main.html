@@ -1,0 +1,289 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+
+  <title>NBA Free Throws</title>
+  <meta name="description" content="NBA Free Throws">
+  <meta name="author" content="Naveen Iyer">
+  <!-- CSS only -->
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+
+<!-- JS, Popper.js, and jQuery -->
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js" integrity="sha384-9/reFTGAW83EW2RDu2S0VKaIzap3H66lZH81PoYlFhbGU+6BZp6G7niu735Sk7lN" crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js" integrity="sha384-B4gt1jrGC7Jh4AgTPSdUtOBvfO8shuf57BaghqFfPlYxofvL8/KUEfYiJOMMV+rV" crossorigin="anonymous"></script>
+<script src="https://d3js.org/d3.v5.min.js"></script>
+<script src="https://unpkg.com/d3-simple-slider"></script>
+
+<style>
+    .svg-container {
+      display: inline-block;
+      position: relative;
+      width: 100%;
+      padding-bottom: 50%; /* aspect ratio */
+      vertical-align: top;
+      overflow: hidden;
+      }
+      .svg-content-responsive {
+      display: inline-block;
+      position: absolute;
+      top: 10px;
+      left: 0;
+      }
+
+
+	.axis_standard {
+		font-family:Arial, Helvetica, sans-serif;
+		font-size: 5px;
+		color: rgb(189, 189, 189);
+		stroke-width: 0.6px;
+	}
+    div.tooltip {	
+    position: absolute;			
+    text-align: center;			
+    width: 140px;					
+    height: 50px;					
+    padding: 2px;
+    color: white;			
+    font: 12px sans-serif;		
+    background: #674172;	
+    border: 0px;		
+    border-radius: 4px;			
+    pointer-events: none;			
+    }
+</style>
+</head>
+
+<body>
+    <br>
+    <div class="container">
+        <h1> NBA Free Throws Analysis</h1>
+    </div>
+    <div class="row">
+        <div class="col-12 svg-container">
+            <svg preserveAspectRatio="xMinYMin meet" viewBox="0 0 700 500" id="main" class="svg-content-responsive"  xmlns="http://www.w3.org/2000/svg">
+                <!-- <defs>
+                    <pattern id="smallGrid" width="8" height="8" patternUnits="userSpaceOnUse">
+                        <path d="M 8 0 L 0 0 0 8" fill="none" stroke="gray" stroke-width="0.5"/>
+                    </pattern>
+                    <pattern id="grid" width="80" height="80" patternUnits="userSpaceOnUse">
+                        <rect width="80" height="80" fill="url(#smallGrid)"/>
+                        <path d="M 80 0 L 0 0 0 80" fill="none" stroke="gray" stroke-width="1"/>
+                    </pattern>
+                    </defs>
+
+                    <rect width="100%" height="100%" fill="url(#grid)" /> -->
+            </svg>
+        </div>
+    </div>
+</body>
+
+<script>
+    var keys = ['CENTER', 'SHOOTING GUARD', 'SMALL FORWARD', 'POWER FORWARD', 'POINT GUARD'];
+
+let color_map = {
+    'CENTER': '#96281b',
+    'SHOOTING GUARD': '#049372',
+    'SMALL FORWARD': '#013243',
+    'POWER FORWARD': '#f9690e',
+    'POINT GUARD': '#663399' ,
+};
+
+let svg = d3.select('#main');
+let year = 1980;
+let x_range = [50, 400];
+let g = svg.append("g");
+let x_scale_year = d3.scaleLinear().domain([1980, 2020]).range(x_range);
+let x_scale = d3.scaleLinear().domain([0, 100]).range(x_range); // for free throw pct
+
+let y_range_stacked = [115, 25];
+let y_domain_stacked = [0, 5000];
+let y_domain_scatter = [0, 1000];
+let y_scale_stacked = d3.scaleLinear().domain(y_domain_stacked).range(y_range_stacked);
+let y_range_scatter = [215, 130];
+let y_scale_scatter = d3.scaleLinear().domain(y_domain_scatter).range(y_range_scatter);
+
+let y_scale_slider = d3.scaleLinear().domain([20000, 80000]).range([250, 225]);
+let pdl;
+let sct;
+
+function setupScales() {
+    // axis for top chart
+    var y_axis_stacked = svg.append("g")
+        .attr("transform", "translate(" + (x_range[0] - 5) + "," + 0 + ")")
+        .attr("class", "axis_standard")
+        .attr("color", "black")
+        .call(d3.axisLeft(y_scale_stacked).ticks(1).tickSize(4));
+
+    var x_axis_stacked = svg.append("g")
+        // .attr("class", "grid")
+        .attr("transform", "translate(0," + (y_range_stacked[0] + 5) + ")")
+        .attr("class", "axis_standard")
+        .attr("color", "black")
+        .call(d3.axisBottom(x_scale).ticks(5).tickSize(4));
+    
+    var y_axis_stacked = svg.append("g")
+        .attr("transform", "translate(" + (x_range[0] - 5) + "," + 0 + ")")
+        .attr("class", "axis_standard")
+        .attr("color", "black")
+        .call(d3.axisLeft(y_scale_scatter).ticks(1).tickSize(4));
+    
+    
+
+}
+
+function setupLegend() {
+    svg.selectAll('.unique').data(keys).enter().append('rect').attr('x', 400).attr('y', (d, i) => i* 15 + 35).attr('height', 5).attr('width', 5).attr('fill', d=>color_map[d]);
+    svg.selectAll('z').data(keys).enter().append('text').attr('x', 410).attr('y', (d, i) => (i* 15) + 40).text(d=> d).attr('font-size', 5);
+
+}
+
+setupLegend();
+
+d3.json("../data/yearly_pdl.json").then(function(data) {
+        drawStackedBars(data[year]);
+        pdl = data;
+    });
+
+function drawStackedBars(data) {
+    var keys = ['CENTER', 'SHOOTING GUARD', 'SMALL FORWARD', 'POWER FORWARD', 'POINT GUARD'];
+
+    var stackGen = d3.stack().keys(keys);
+    var stackedSeries = stackGen(data).map(d=> (d.forEach(v=> v.key=d.key), d));
+    d3.select('#g1').remove();
+    svg.append("g").attr("id", "g1").selectAll('g').data(stackedSeries).join("g").attr("fill", d=>color_map[d.key])
+    .selectAll(".stacked").data(d => d).join("rect").attr("x", d=> x_scale(d.data.PCT))
+                                                .attr('y', d=> y_scale_stacked(d[1]))
+                                                .attr('height', d=> y_scale_stacked(d[0]) - y_scale_stacked(d[1]))
+                                                .attr('width', 2)
+                                                .attr('class', 'stacked');
+
+}
+
+d3.json("../data/yearly_player.json").then(function(data) {
+    drawScatter(data[year]);
+    sct = data;
+});
+
+var tooltip = d3.select("body")
+    .append("div")
+    .attr("class", "tooltip")
+    .style("opacity", 0);
+
+function drawScatter(data) {
+    console.log(data);
+    var players = svg.selectAll('.players').data(data, d=>d.name);
+
+    players.exit().remove();
+    
+    var enter = players.enter().append('circle').attr('class', 'players').attr('cx', d=> x_scale(d.ft_percent)).attr('cy', d=> y_scale_scatter(d.ftm))
+    .on("mouseover", function(d) {return tooltip.style("opacity", 0.9).style("background", color_map[d.position]).html("<b>" + d.name + "</b></br>" + "FT Attempts: " + d.fta + " </br>" + "FT Makes: " + d.ftm);})
+        .on("mousemove", function(){return tooltip.style("top",
+            (d3.event.pageY-10)+"px").style("left",(d3.event.pageX+10)+"px");})
+        .on("mouseout", function(){return tooltip.style("opacity", 0);});
+    
+    players.merge(enter).transition().attr('cx', d=> x_scale(d.ft_percent)).attr('cy', d=> y_scale_scatter(d.ftm))
+       .attr('class', 'players')
+       .attr('r', d=> d.fta / 125)
+       .attr('fill', d=> color_map[d.position])
+       .attr('opacity', 0.8);
+}
+
+
+d3.json("../data/yearly_total.json").then(function(data) {
+    drawSlider(data);
+});
+
+
+setupScales();
+
+
+
+
+
+function drawSlider(data) {
+//   var svg = d3
+//     .select('div#slider-new-york-times')
+//     .append('svg')
+//     .attr('width', width)
+//     .attr('height', height);
+
+  var padding = 0.1;
+
+//   var xBand = d3
+//     .scaleBand()
+//     .domain(dataNewYorkTimes.map(d => d.year))
+//     .range([margin.left, width - margin.right])
+//     .padding(padding);
+
+//   var xLinear = d3
+//     .scaleLinear()
+//     .domain([
+//       d3.min(dataNewYorkTimes, d => d.year),
+//       d3.max(dataNewYorkTimes, d => d.year),
+//     ])
+//     .range([
+//       margin.left + xBand.bandwidth() / 2 + xBand.step() * padding - 0.5,
+//       width -
+//         margin.right -
+//         xBand.bandwidth() / 2 -
+//         xBand.step() * padding -
+//         0.5,
+//     ]);
+
+//   var y = d3
+//     .scaleLinear()
+//     .domain([0, d3.max(dataNewYorkTimes, d => d.value)])
+//     .nice()
+//     .range([height - margin.bottom, margin.top]);
+
+  var slider = g =>
+    g.attr('transform', `translate(0,${255})`).call(
+      d3
+        .sliderBottom(x_scale_year)
+        .step(1)
+        .ticks(4)
+        .default(1980)
+        .tickFormat(d3.format("d"))
+        .on('onchange', value => draw(value))
+    );
+
+  var bars = svg
+    .append('g')
+    .selectAll('rect')
+    .data(data);
+    
+
+  var barsEnter = bars
+    .enter()
+    .append('rect')
+    .attr('x', d => x_scale_year(d.year))
+    .attr('y', d => y_scale_slider(d.fta))
+    .attr('height', function(d) {
+        return y_scale_slider(20000) - y_scale_slider(d.fta);
+    })
+    .attr('width', 5);
+
+  svg.append('g').call(slider);
+  svg.select('.track-overlay').attr('stroke-width', 120); // Ensure drag zone covers everything
+
+  var draw = selected => {
+    barsEnter
+      .merge(bars)
+      .attr('fill', d => (d.year === selected ? '#674172' : '#e0e0e0'));
+    // d3.select('p#value-new-york-times').text(
+    //   d3.format('$,.2r')(dataNewYorkTimes[selected - 1].value)
+    // );
+    year = selected;
+    drawStackedBars(pdl[year]);
+    drawScatter(sct[year]);
+
+  };
+
+  draw(1980);
+}
+
+</script>
+</html>
